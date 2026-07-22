@@ -151,6 +151,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "unstable", feature(trusted_len))]
+#![cfg_attr(feature = "unstable", feature(dropck_eyepatch))]
 #![allow(clippy::comparison_chain, clippy::missing_safety_doc)]
 
 extern crate alloc;
@@ -1934,7 +1935,18 @@ fn drop_non_singleton<T>(this: &mut ThinVec<T>) {
     }
 }
 
+#[cfg(not(feature = "unstable"))]
 impl<T> Drop for ThinVec<T> {
+    #[inline]
+    fn drop(&mut self) {
+        if !self.is_singleton() {
+            drop_non_singleton(self);
+        }
+    }
+}
+
+#[cfg(feature = "unstable")]
+unsafe impl<#[may_dangle] T> Drop for ThinVec<T> {
     #[inline]
     fn drop(&mut self) {
         if !self.is_singleton() {
